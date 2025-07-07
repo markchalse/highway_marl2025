@@ -32,7 +32,7 @@ if __name__ == "__main__":
     #dqn_model = DQN(state_size = 25, action_size=5, model_file_path='idqn.pth',use_epsilon=False)
     #dqn_model = DQN(state_size = 25, action_size=5, model_file_path='endpoint/idqn.pth.1-3-10',use_epsilon=False)
     # 训练循环
-    for episode in range(1000):
+    for episode in range(800):
         print (f'episode {episode} begin')
         obs = env.reset()[0] #The first observation information extraction
         states=[FlattenObs(obs_i) for obs_i in obs]

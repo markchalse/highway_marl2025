@@ -30,7 +30,7 @@ if __name__ == "__main__":
     #vdn_model = VDN(state_size = 25, action_size=5, model_file_path='vdn.pth',use_epsilon=False)
     #vdn_model = VDN(state_size = 25, action_size=5, model_file_path='endpoint/vdn.pth.3-1',use_epsilon=False)
     # 训练循环
-    for episode in range(1000):
+    for episode in range(800):
         print (f'episode {episode} begin')
         obs = env.reset()[0] #The first observation information extraction
         #obs = obs[0] #The first observation information extraction
