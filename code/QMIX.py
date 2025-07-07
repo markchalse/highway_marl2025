@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # init dqn model
     qmix_model = QMIX(state_size = 25, action_size=5,agent_num=AGENTS_NUM)
     #qmix_model = QMIX(state_size = 25, action_size=5,agent_num=AGENTS_NUM, model_file_path='qmix.pth',use_epsilon=False)
-    #qmix_model = QMIX(state_size = 25, action_size=5,agent_num=AGENTS_NUM, model_file_path='qmix.pth.3-6-16',use_epsilon=False)
+    #qmix_model = QMIX(state_size = 25, action_size=5,agent_num=AGENTS_NUM, model_file_path='endpoint/qmix.pth.3-6-16',use_epsilon=False)
     # 训练循环
     for episode in range(1000):
         print (f'episode {episode} begin')

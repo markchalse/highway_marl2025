@@ -23,20 +23,18 @@ if __name__ == "__main__":
                    config={
                     "traffic_density": 999,
                     "controlled_vehicles":AGENTS_NUM,
-                    "perception_distance":100
+                    #"perception_distance":100
                     })
     env.reset()
     #print ('obs:',env.observation_space)
     # init dqn model
     dqn_model = DQN(state_size = 25, action_size=5)
     #dqn_model = DQN(state_size = 25, action_size=5, model_file_path='idqn.pth',use_epsilon=False)
-    #dqn_model = DQN(state_size = 25, action_size=5, model_file_path='idqn.pth.1-3-10',use_epsilon=False)
-    #dqn_model = DQN(state_size = 25, action_size=5, model_file_path='idqn.pth.2-3',use_epsilon=True)
+    #dqn_model = DQN(state_size = 25, action_size=5, model_file_path='endpoint/idqn.pth.1-3-10',use_epsilon=False)
     # 训练循环
     for episode in range(1000):
         print (f'episode {episode} begin')
         obs = env.reset()[0] #The first observation information extraction
-        #obs = obs[0] #The first observation information extraction
         states=[FlattenObs(obs_i) for obs_i in obs]
         total_reward = 0
         for step in range(200):

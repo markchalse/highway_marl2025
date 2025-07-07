@@ -123,122 +123,14 @@ class ReplayBuffer:
         return len(self.buffer)
 
 
-
-'''
-class SumTree:
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.tree = np.zeros(2 * capacity - 1)
-        self.data = np.zeros(capacity, dtype=object)
-        self.n_entries = 0
-        self.write = 0
-        
-    def _propagate(self, idx, change):
-        parent = (idx - 1) // 2
-        self.tree[parent] += change
-        if parent != 0:
-            self._propagate(parent, change)
-            
-    def _retrieve(self, idx, s):
-        left = 2 * idx + 1
-        right = left + 1
-        
-        if left >= len(self.tree):
-            return idx
-            
-        if s <= self.tree[left]:
-            return self._retrieve(left, s)
-        else:
-            return self._retrieve(right, s - self.tree[left])
-            
-    def total(self):
-        return self.tree[0]
-        
-    def add(self, p, data):
-        idx = self.write + self.capacity - 1
-        
-        self.data[self.write] = data
-        self.update(idx, p)
-        
-        self.write += 1
-        if self.write >= self.capacity:
-            self.write = 0
-        if self.n_entries < self.capacity:
-            self.n_entries += 1
-            
-    def update(self, idx, p):
-        change = p - self.tree[idx]
-        self.tree[idx] = p
-        self._propagate(idx, change)
-        
-    def get(self, s):
-        idx = self._retrieve(0, s)
-        data_idx = idx - self.capacity + 1
-        return (idx, self.tree[idx], self.data[data_idx])
-
-
-class PrioritizedReplayBuffer:
-    def __init__(self, capacity, alpha=0.6, beta=0.4, beta_increment=0.001):
-        self.alpha = alpha  # 控制优先程度 (0=均匀，1=完全优先)
-        self.beta = beta    # 重要性采样权重初始值
-        self.beta_increment = beta_increment
-        self.capacity = capacity
-        self.tree = SumTree(capacity)
-        self.max_priority = 1.0  # 初始优先级
-        self.epsilon = 1e-6  # 小常数避免零优先级
-        
-    def push(self, transition):
-        # 存储transition，初始赋予最大优先级
-        self.tree.add(self.max_priority, transition)
-        
-    def sample(self, batch_size):
-        batch = []
-        indices = []
-        weights = np.empty(batch_size, dtype=np.float32)
-        
-        # 计算分段总和
-        segment = self.tree.total() / batch_size
-        
-        for i in range(batch_size):
-            a = segment * i
-            b = segment * (i + 1)
-            s = np.random.uniform(a, b)
-            (idx, priority, data) = self.tree.get(s)
-            batch.append(data)
-            indices.append(idx)
-            # 计算重要性采样权重
-            prob = priority / self.tree.total()
-            weights[i] = (self.tree.n_entries * prob) ** (-self.beta)
-            
-        # 归一化权重
-        weights = weights / weights.max()
-        
-        # 逐渐增加beta
-        self.beta = min(1.0, self.beta + self.beta_increment)
-        
-        #print ('len batch',len(batch))
-        return batch, indices, weights
-    
-    def update_priorities(self, indices, priorities):
-        for idx, priority in zip(indices, priorities):
-            # 添加小常数并应用alpha次方
-            priority = (priority + self.epsilon) ** self.alpha
-            self.tree.update(idx, priority)
-            self.max_priority = max(self.max_priority, priority)
-            
-    def __len__(self):
-        return self.tree.write
-        #return len(self.buffer)
-'''
-
 class DQN():
     def __init__(self,state_size,action_size,model_file_path='',use_epsilon=True):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.action_size = action_size
-        #self.model = DQNModule(state_size, action_size).to(self.device)
-        self.model = DQNModuleMini(state_size, action_size).to(self.device)
-        #self.target_model = DQNModule(state_size, action_size).to(self.device)
-        self.target_model = DQNModuleMini(state_size, action_size).to(self.device)
+        self.model = DQNModule(state_size, action_size).to(self.device)
+        self.target_model = DQNModule(state_size, action_size).to(self.device)
+        #self.model = DQNModuleMini(state_size, action_size).to(self.device)
+        #self.target_model = DQNModuleMini(state_size, action_size).to(self.device)
         self.update_target_model()
         self.replay_buffer = ReplayBuffer(capacity=1000000,model_name='dqn')
         self.optimizer = optim.Adam(self.model.parameters(), lr=LEARNING_RATE)
@@ -255,9 +147,12 @@ class DQN():
         self.target_model.load_state_dict(self.model.state_dict())
     
     def push_experience(self,state, action, reward, state_, done):
-        self.replay_buffer.push((state, action, reward, state_, done))
+        if self.USE_EPSILON:
+            self.replay_buffer.push((state, action, reward, state_, done))
         
     def save_model(self, file_path):
+        if not self.USE_EPSILON:
+            return
         torch.save(self.target_model.state_dict(), file_path)
         print(f"模型已保存到 {file_path}")
 
@@ -302,11 +197,11 @@ class VDN(DQN):
     def __init__(self, state_size, action_size, model_file_path='', use_epsilon=True):
         super().__init__(state_size, action_size, model_file_path, use_epsilon)
         self.replay_buffer = ReplayBuffer(capacity=1000000,model_name='vdn')
-        #self.replay_buffer = PrioritizedReplayBuffer(capacity=1000000)
     
         self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=10000, gamma=0.9) # 添加学习率调度器
     def push_experience(self,exp):
-        self.replay_buffer.push(exp)
+        if self.USE_EPSILON:
+            self.replay_buffer.push(exp)
             
     def train(self):
         if not self.USE_EPSILON:
@@ -315,23 +210,7 @@ class VDN(DQN):
             print("Replay buffer not enough samples...")
             return
         # 采样数据（形状：[batch_size, num_agents, ...]）
-        states, actions, rewards, next_states, dones = self.replay_buffer.sample(BATCH_SIZE)
-        
-        '''
-        batch_samples, indices, weights = self.replay_buffer.sample(BATCH_SIZE)
-        #states, actions, rewards, next_states, dones = zip(*batch)
-        # 按智能体拆分数据
-        states, actions, rewards, next_states, dones = [], [], [], [], []
-        for sample in batch_samples:  # 遍历每个 batch 样本
-            agent_data = list(zip(*sample))  # 拆分成 (states, actions, rewards, next_states, dones)
-            states.append(agent_data[0])      # 所有智能体的 state
-            actions.append(agent_data[1])     # 所有智能体的 action
-            rewards.append(agent_data[2])     # 所有智能体的 reward
-            next_states.append(agent_data[3]) # 所有智能体的 next_state
-            dones.append(agent_data[4])       # 所有智能体的 done
-        #print ('rewards :',rewards)
-        #print ('dones :',dones)
-        '''
+        states, actions, rewards, next_states, dones = self.replay_buffer.sample(BATCH_SIZE)  
         
         states = torch.FloatTensor(states).to(self.device)          # [batch_size, num_agents, state_dim]
         actions = torch.LongTensor(actions).to(self.device)         # [batch_size, num_agents]
@@ -367,28 +246,7 @@ class VDN(DQN):
         #print ('team_dones shape:',team_dones.shape)
         # TD 目标
         target_q = team_rewards + (1 - team_dones) * GAMMA * next_q_total
-        #print ('target_q shape',target_q.shape)
-        
-        '''
-        with torch.no_grad():  # 仅对 td_errors 禁用梯度
-            #print (current_q_total.shape)
-            #print (team_rewards.shape)
-            #print (team_rewards)
-            tq = team_rewards + GAMMA * next_q_total * (1 - team_dones)
-            #print ('tq shape: ',tq.shape)
-            #print ('current_q_total shape:',current_q_total.shape)
-            td_errors = (tq - current_q_total.squeeze())
-            #print (td_errors.shape)
-            td_errors = td_errors.abs().squeeze().cpu().numpy()
-            #print (td_errors)
-        # 更新优先级
-        #print (len(indices))
-        #print (len(td_errors))
-        self.replay_buffer.update_priorities(indices, td_errors)
-        '''
-            
         # 计算损失（MSE）
-        #loss = nn.MSELoss()(current_q_total.squeeze(), target_q)
         loss = nn.SmoothL1Loss()(current_q_total.squeeze(), target_q) # 使用Huber loss替代MSE
         
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), 10.0) # 梯度裁剪
@@ -426,9 +284,7 @@ class MixingNetwork(nn.Module):
         self.hyper_b1 = HyperNetwork(state_size, hyper_hidden_dim, hyper_hidden_dim)
         self.hyper_b2 = nn.Linear(state_size, 1)
         
-    def forward(self, agent_qs, states):
-        #agent_qs: [batch_size, num_agents] 各智能体的Q值
-        #states: [batch_size, state_size] 全局状态
+    def forward(self, agent_qs, states): #agent_qs: [batch_size, num_agents] 各智能体的Q值  #states: [batch_size, state_size] 全局状态
         batch_size = agent_qs.size(0)
         # 第一层
         w1 = torch.abs(self.hyper_w1(states)).view(-1, self.num_agents, self.hyper_hidden_dim)
@@ -459,7 +315,8 @@ class QMIX(DQN):
         self.mixer_optimizer = optim.Adam(self.mixing_network.parameters(), lr=LEARNING_RATE)
     
     def push_experience(self,exp):
-        self.replay_buffer.push(exp)
+        if self.USE_EPSILON:
+            self.replay_buffer.push(exp)
     
     def update_target_model(self):
         self.target_model.load_state_dict(self.model.state_dict())
@@ -474,6 +331,8 @@ class QMIX(DQN):
         print(f"模型已从 {file_path} 加载")
     
     def save_model(self, file_path):
+        if not self.USE_EPSILON:
+            return
         state_dicts = {
             'agent_model': self.model.state_dict(),
             'mixing_network': self.mixing_network.state_dict()

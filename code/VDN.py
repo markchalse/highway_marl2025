@@ -28,7 +28,7 @@ if __name__ == "__main__":
     # init dqn model
     vdn_model = VDN(state_size = 25, action_size=5)
     #vdn_model = VDN(state_size = 25, action_size=5, model_file_path='vdn.pth',use_epsilon=False)
-    #vdn_model = VDN(state_size = 25, action_size=5, model_file_path='vdn.pth.3-1',use_epsilon=False)
+    #vdn_model = VDN(state_size = 25, action_size=5, model_file_path='endpoint/vdn.pth.3-1',use_epsilon=False)
     # 训练循环
     for episode in range(1000):
         print (f'episode {episode} begin')
