@@ -179,7 +179,7 @@ class MergeEnv(AbstractEnv):
             num_HDV = np.random.choice(np.arange(1, 3), 1)[0]
 
         if self.config["traffic_density"] == 0:
-            # easy mode: 1-3 CAVs + 1-3 HDVs
+            # easy mode: 1 CAVs + 3-5 HDVs
             num_CAV =1
             num_HDV = np.random.choice(np.arange(3, 6), 1)[0]
             
@@ -208,7 +208,7 @@ class MergeEnv(AbstractEnv):
             num_HDV = np.random.choice(np.arange(3, 6), 1)[0]
             
         elif self.config["traffic_density"] == 999:
-            #haojiang special
+            #multi agent
             num_CAV = self.config['controlled_vehicles']
             num_HDV = 0
             
