@@ -157,8 +157,8 @@ class DQN():
         print(f"模型已保存到 {file_path}")
 
     def load_model(self, file_path):
-        self.model.load_state_dict(torch.load(file_path))
-        self.target_model.load_state_dict(torch.load(file_path))
+        self.model.load_state_dict(torch.load(file_path,map_location=self.device))
+        self.target_model.load_state_dict(torch.load(file_path,map_location=self.device))
         print(f"模型已从 {file_path} 加载")
         
     def get_action(self,state):
@@ -323,7 +323,7 @@ class QMIX(DQN):
         self.target_mixing_network.load_state_dict(self.mixing_network.state_dict())
     
     def load_model(self, file_path):
-        state_dicts = torch.load(file_path)
+        state_dicts = torch.load(file_path,map_location=self.device)
         self.model.load_state_dict(state_dicts['agent_model'])
         self.target_model.load_state_dict(state_dicts['agent_model'])
         self.mixing_network.load_state_dict(state_dicts['mixing_network'])
